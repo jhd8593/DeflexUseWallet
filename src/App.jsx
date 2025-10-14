@@ -2,11 +2,15 @@ import { useCallback, useState, useMemo, useEffect } from "react";
 import { PeraWalletConnect } from "@perawallet/connect";
 import algosdk from "algosdk";
 
-const VESTIGE_API_BASE = "https://api.vestigelabs.org";
-const DEFLEX_API_BASE = "https://deflex.txnlab.dev/api";
-const API_KEY = import.meta.env.VITE_API_KEY;
-const ALGOD_URI = 'https://mainnet-api.algonode.cloud';
-const ALGOD_PORT = 443;
+const VESTIGE_API_BASE = import.meta.env.VITE_VESTIGE_API_BASE || "https://api.vestigelabs.org";
+const DEFLEX_API_BASE = import.meta.env.VITE_DEFLEX_API_BASE || "https://deflex.txnlab.dev/api";
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+const ALGOD_URI = import.meta.env.VITE_ALGOD_URI || 'https://mainnet-api.algonode.cloud';
+const ALGOD_PORT = parseInt(import.meta.env.VITE_ALGOD_PORT || '443', 10);
+
+if (!API_KEY) {
+  console.warn('API key is not set. Please add VITE_API_KEY to your .env file.');
+}
 
 function App() {
   const [sellSearchQuery, setSellSearchQuery] = useState("");
@@ -53,7 +57,7 @@ function App() {
         setWalletBalances(data.balances);
       }
     } catch (error) {
-      console.error("Error fetching wallet balances:", error);
+      // Error fetching wallet balances
       setWalletBalances({});
     } finally {
       setIsLoadingBalances(false);
@@ -99,7 +103,7 @@ function App() {
         setShowBuySearchResults(true);
       }
     } catch (error) {
-      console.error("Search error:", error);
+      // Search error occurred
       if (isSell) {
         setSellSearchResults([]);
         setShowSellSearchResults(false);
@@ -175,7 +179,7 @@ function App() {
         fetchWalletBalances(newAccounts[0]);
       }
     } catch (error) {
-      console.error("Connection failed:", error);
+      // Connection failed
     } finally {
       setIsConnecting(false);
     }
@@ -295,7 +299,6 @@ function App() {
         });
       }
     } catch (error) {
-      console.error("Quote error:", error);
       setBuyAmount("0.000000");
       setQuoteInfo(null);
     } finally {
@@ -352,14 +355,12 @@ function App() {
       const accountInfo = await algod.accountInformation(address).do();
       return accountInfo.assets && accountInfo.assets.some(asset => asset['asset-id'] === assetId);
     } catch (error) {
-      console.error('Error checking asset opt-in status:', error);
       return false;
     }
   };
 
   const handleAssetOptIn = async (assetId) => {
     if (!accountAddress) {
-      console.error('Wallet not connected');
       return false;
     }
 
@@ -369,7 +370,6 @@ function App() {
         return true;
       }
 
-      console.log(`Opting in to asset ${assetId}...`);
       const algod = new algosdk.Algodv2('', ALGOD_URI, ALGOD_PORT);
       const suggestedParams = await algod.getTransactionParams().do();
       
@@ -390,14 +390,11 @@ function App() {
       const optInTxId = optInResult.txId || optInResult.txid || optInResult.transactionId || optInResult.transaction_id;
       
       await algosdk.waitForConfirmation(algod, optInTxId, 4);
-      console.log(`Successfully opted in to asset ${assetId}`);
       
       return true;
       
     } catch (error) {
-      console.error('Error opting into asset:', error);
-      alert(`Failed to opt into asset ${assetId}: ${error.message}`);
-      return false;
+      throw new Error("Failed to opt into asset");
     }
   };
 
@@ -433,7 +430,6 @@ function App() {
         }
       }
 
-      console.log('Fetching fresh quote for execution...');
       const quoteParams = new URLSearchParams({
         chain: 'mainnet',
         algodUri: ALGOD_URI,
@@ -451,7 +447,6 @@ function App() {
 
       const quoteResponse = await fetch(`${DEFLEX_API_BASE}/fetchQuote?${quoteParams}`);
       const freshQuote = await quoteResponse.json();
-      console.log('Fresh quote received');
 
       if (!freshQuote.txnPayload) {
         alert('Invalid quote: missing transaction payload');
@@ -460,7 +455,6 @@ function App() {
 
       const params = await algod.getTransactionParams().do();
 
-      console.log('Fetching transaction group...');
       const txnResponse = await fetch(`${DEFLEX_API_BASE}/fetchExecuteSwapTxns`, {
         method: 'POST',
         headers: {
@@ -475,7 +469,6 @@ function App() {
       });
 
       const txnGroup = await txnResponse.json();
-      console.log('Transaction group received');
 
       if (!txnGroup || !txnGroup.txns || !Array.isArray(txnGroup.txns)) {
         alert('Invalid transaction response from server');
@@ -521,7 +514,6 @@ function App() {
           : { txn: item.txn, signers: [] }
       );
 
-      console.log('Signing transactions...');
       const swapSignedResult = await peraWallet.signTransaction([swapTxnsForPera]);
 
       const finalSwapSignedTxns = [];
@@ -565,13 +557,10 @@ function App() {
         }
       }
 
-      console.log('Submitting transactions...');
       const swapResult = await algod.sendRawTransaction(finalSwapSignedTxns).do();
       const swapTxId = swapResult.txId || swapResult.txid || swapResult.transactionId || swapResult.transaction_id;
 
-      console.log('Waiting for confirmation...');
       const confirmedSwapTxn = await algosdk.waitForConfirmation(algod, swapTxId, 4);
-      console.log('Confirmed in round:', confirmedSwapTxn["confirmed-round"]);
 
       // Add completed swap to history
       const newSwap = {
