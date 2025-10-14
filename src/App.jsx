@@ -249,7 +249,7 @@ function App() {
         apiKey: API_KEY,
         maxGroupSize: '13',
         atomicOnly: 'false',
-        referrer: ''
+        referrer: 'your_algorand_address_here'
       });
 
       const response = await fetch(`${DEFLEX_API_BASE}/fetchQuote?${params}`);
