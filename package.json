@@ -11,10 +11,13 @@
   "dependencies": {
     "@perawallet/connect": "^1.4.2",
     "@txnlab/deflex-sdk-js": "github:deflex-fi/deflex-sdk-js",
+    "@txnlab/use-wallet-react": "^4.3.1",
+    "@txnlab/use-wallet-ui-react": "^0.3.0",
     "algosdk": "^3.0.2",
     "axios": "^1.7.2",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",
+    "lute-connect": "^1.6.3",
     "process": "^0.11.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
